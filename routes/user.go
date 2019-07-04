@@ -10,14 +10,14 @@ import (
 )
 
 func userLogin(c *gin.Context) {
-	var u models.User
+	var u models.UserVo
 	if c.ShouldBindJSON(&u) != nil {
 		c.JSON(http.StatusForbidden, "登录参数无效")
 		return
 	}
 	tid, err := u.Login()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err)
+		c.String(http.StatusNotFound, fmt.Sprintf("%v", err))
 		return
 	}
 	c.String(http.StatusOK, tid)

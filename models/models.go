@@ -141,12 +141,12 @@ func prop(dt, analyzer string) map[string]interface{} {
 	}
 }
 
-func getUUID(tname string) (string, error) {
+func getUUID(tname string) string {
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return "", fmt.Errorf("getUUID: %v", err)
+		panic(fmt.Sprintf("google uuid with error: #%v", err))
 	}
-	return fmt.Sprintf("%s_%s", tname, id), nil
+	return fmt.Sprintf("%s_%s", tname, id)
 }
 
 // cache captcha to redis

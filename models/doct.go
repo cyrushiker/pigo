@@ -16,3 +16,9 @@ type Doct struct {
 func (d *Doct) Add() error {
 	return nil
 }
+
+type DKey struct {
+}
+
+type KGroup struct {
+}
