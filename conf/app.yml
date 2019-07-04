@@ -1,0 +1,18 @@
+# 
+app-name: Pigo
+version: 19.07.0310
+
+databases:
+  mysql:
+    host: 127.0.0.1
+    port: 4396
+    pass:
+    db:
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    pass:
+    db: 0
+  elastic:
+    hosts:
+      - http://127.0.0.1:9200

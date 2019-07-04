@@ -1,0 +1,10 @@
+/.vscode/
+/.idea/
+/go.sum
+/spec
+/tmp
+
+*.exe
+*.o
+*.a
+*.so
