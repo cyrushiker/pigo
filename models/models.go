@@ -18,7 +18,7 @@ var (
 	redisCli *redis.Client
 	esCli    *elastic.Client
 
-	indexTypes []interface{}
+	indexTypes []esType
 )
 
 const defaultIndex = ".pigo"
@@ -60,11 +60,10 @@ func createIndex(ctx context.Context) error {
 	// create or reset index mapping
 	indexMapping := make(map[string]interface{})
 	properties := make(map[string]interface{})
-	for _, it := range indexTypes {
-		name, props := mapping(it)
-		properties[name] = map[string]interface{}{"properties": props}
-	}
 	properties["etype"] = prop("keyword", "")
+	for _, it := range indexTypes {
+		properties[it.esTypeName()] = mapping(it)
+	}
 	indexMapping["mappings"] = map[string]interface{}{"properties": properties}
 
 	createIndex, err := esCli.CreateIndex(defaultIndex).BodyJson(indexMapping).Do(ctx)
@@ -101,10 +100,14 @@ func NewEsCli() {
 	}
 }
 
-func mapping(i interface{}) (string, map[string]interface{}) {
+// esType declare the type name
+type esType interface {
+	esTypeName() string
+}
+
+func mapping(i esType) map[string]interface{} {
 	fmap := make(map[string]interface{})
 	v := reflect.TypeOf(i).Elem()
-	name := strings.ToLower(v.Name())
 	for i := 0; i < v.NumField(); i++ {
 		fieldInfo := v.Field(i)
 		tag := fieldInfo.Tag
@@ -118,7 +121,7 @@ func mapping(i interface{}) (string, map[string]interface{}) {
 			}
 		}
 	}
-	return name, fmap
+	return map[string]interface{}{"properties": fmap}
 }
 
 func prop(dt, analyzer string) map[string]interface{} {
@@ -126,7 +129,7 @@ func prop(dt, analyzer string) map[string]interface{} {
 	case "date":
 		return map[string]interface{}{
 			"type":   "date",
-			"format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis",
+			"format": "strict_date_optional_time||epoch_millis",
 		}
 	case "keyword":
 		return map[string]interface{}{
@@ -145,6 +148,9 @@ func getUUID(tname string) string {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		panic(fmt.Sprintf("google uuid with error: #%v", err))
+	}
+	if tname == "" {
+		return id.String()
 	}
 	return fmt.Sprintf("%s_%s", tname, id)
 }

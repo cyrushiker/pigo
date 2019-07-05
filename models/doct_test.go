@@ -23,4 +23,5 @@ func TestDoctMapping(t *testing.T) {
 
 	vr := captcha.VerifyString(cid, "121111")
 	t.Logf("verify result: %v", vr)
+	t.Logf("time now: %s", time.Now().Format(time.RFC3339))
 }

@@ -10,12 +10,21 @@ import (
 	"github.com/olivere/elastic/v7"
 )
 
-const userPrefix = "pigo:user:"
+const (
+	userPrefix = "pigo:user:"
+)
+
+func passMd5(p string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(p)))
+}
 
 type User struct {
-	Id       string `json:"id" dt:"keyword"`
-	Name     string `json:"name" dt:"keyword"`
-	Password string `json:"password" dt:"keyword"`
+	Id        string    `json:"id" dt:"keyword"`
+	Name      string    `json:"name" dt:"keyword"`
+	Password  string    `json:"password" dt:"keyword"`
+	TelNumber string    `json:"telNumber" dt:"keyword"`
+	Address   string    `json:"address" dt:"text"`
+	Birthday  time.Time `json:"birthday,string" dt:"date"`
 }
 
 type user struct {
@@ -23,12 +32,44 @@ type user struct {
 	U     *User  `json:"user"`
 }
 
+func (u *User) esTypeName() string {
+	return "user"
+}
+
+func (u *User) checkExists() (bool, error) {
+	query := elastic.NewBoolQuery().Must(
+		elastic.NewTermQuery("etype", u.esTypeName()),
+		elastic.NewTermQuery(u.esTypeName()+".name", u.Name),
+	)
+	sr, err := esCli.Search().Index(defaultIndex).Query(query).Do(context.Background())
+	if err != nil {
+		return true, err
+	}
+	if sr.Hits.TotalHits.Value > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (u *User) Create() (err error) {
+	if has, err := u.checkExists(); err != nil {
+		return err
+	} else if has {
+		return fmt.Errorf("User(%s) is exists.", u.Name)
+	}
+	u.Id = getUUID(u.esTypeName())
+	u.Password = passMd5(u.Password)
+	body := user{Etype: u.esTypeName(), U: u}
+	_, err = esCli.Index().Index(defaultIndex).Id(u.Id).BodyJson(body).Do(context.Background())
+	return
+}
+
 type UserVo struct {
-	User
+	*User
 	TokenId string `json:"tokenId"`
 }
 
-func (u *User) String() string {
+func (u *UserVo) String() string {
 	// remove Password from u before cache
 	u.Password = ""
 	uj, err := json.Marshal(*u)
@@ -41,11 +82,11 @@ func (u *User) String() string {
 // UserLogin handle the login and return a tokenId
 func (u *UserVo) Login() (string, error) {
 	logger.Printf("Login user #%s", u.Name)
-
+	// search in es
 	query := elastic.NewBoolQuery().Must(
-		elastic.NewTermQuery("etype", "user"),
-		elastic.NewTermQuery("user.name", u.Name),
-		elastic.NewTermQuery("user.password", fmt.Sprintf("%x", md5.Sum([]byte(u.Password)))),
+		elastic.NewTermQuery("etype", u.esTypeName()),
+		elastic.NewTermQuery(u.esTypeName()+".name", u.Name),
+		elastic.NewTermQuery(u.esTypeName()+".password", passMd5(u.Password)),
 	)
 	sr, err := esCli.Search().Index(defaultIndex).Query(query).Do(context.Background())
 	if err != nil {
@@ -54,9 +95,16 @@ func (u *UserVo) Login() (string, error) {
 	if sr.Hits.TotalHits.Value < 1 {
 		return "", fmt.Errorf("username or userpass is not correct.")
 	}
-	tokenid := userPrefix + getUUID("token")
+	uu := new(user)
+	err = json.Unmarshal(sr.Hits.Hits[0].Source, uu)
+	if err != nil {
+		return "", err
+	}
+	u.User = uu.U
+	tokenid := getUUID("token")
 	u.TokenId = tokenid
-	_, err = redisCli.Set(tokenid, u.String(), 2*time.Hour).Result()
+	logger.Println(u.String())
+	_, err = redisCli.Set(userPrefix+tokenid, u.String(), 2*time.Hour).Result()
 	if err != nil {
 		return "", err
 	}
@@ -65,14 +113,6 @@ func (u *UserVo) Login() (string, error) {
 
 func (u *UserVo) Logout() error {
 	return nil
-}
-
-func (u *User) Create() (err error) {
-	u.Id = getUUID("user")
-	u.Password = fmt.Sprintf("%x", md5.Sum([]byte(u.Password)))
-	body := user{Etype: "user", U: u}
-	_, err = esCli.Index().Index(defaultIndex).Id(u.Id).BodyJson(body).Do(context.Background())
-	return
 }
 
 // ClearUserCache clear all tokens from redis

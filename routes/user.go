@@ -17,7 +17,7 @@ func userLogin(c *gin.Context) {
 	}
 	tid, err := u.Login()
 	if err != nil {
-		c.String(http.StatusNotFound, fmt.Sprintf("%v", err))
+		c.String(http.StatusNotFound, err.Error())
 		return
 	}
 	c.String(http.StatusOK, tid)
@@ -31,7 +31,7 @@ func userCreate(c *gin.Context) {
 	}
 	err := u.Create()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err)
+		c.String(http.StatusForbidden, err.Error())
 		return
 	}
 	c.String(http.StatusOK, u.Id)

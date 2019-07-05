@@ -13,6 +13,10 @@ type Doct struct {
 	Position   int
 }
 
+func (d *Doct) esTypeName() string {
+	return "docut"
+}
+
 func (d *Doct) Add() error {
 	return nil
 }
