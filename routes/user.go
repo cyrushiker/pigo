@@ -11,8 +11,8 @@ import (
 
 func userLogin(c *gin.Context) {
 	var u models.UserVo
-	if c.ShouldBindJSON(&u) != nil {
-		c.JSON(http.StatusForbidden, "登录参数无效")
+	if err := c.ShouldBindJSON(&u); err != nil {
+		c.String(http.StatusForbidden, fmt.Sprintf("parse user info error: #%v", err))
 		return
 	}
 	tid, err := u.Login()
@@ -24,17 +24,28 @@ func userLogin(c *gin.Context) {
 }
 
 func userCreate(c *gin.Context) {
-	var u models.User
-	if c.ShouldBindJSON(&u) != nil {
-		c.JSON(http.StatusForbidden, "用户信息无效")
+	u := new(models.User)
+	if err := c.ShouldBindJSON(u); err != nil {
+		c.String(http.StatusForbidden, fmt.Sprintf("parse user info error: #%v", err))
 		return
 	}
+	// todo: how to handle the zero value of time.Time
 	err := u.Create()
 	if err != nil {
 		c.String(http.StatusForbidden, err.Error())
 		return
 	}
 	c.String(http.StatusOK, u.Id)
+}
+
+func userList(c *gin.Context) {
+	u := new(models.User)
+	datas, err := u.List()
+	if err != nil {
+		c.String(http.StatusForbidden, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{"data": datas})
 }
 
 func userCacheClear(c *gin.Context) {
@@ -50,4 +61,5 @@ func RegUser(user *gin.RouterGroup) {
 	user.POST("/login", userLogin)
 	user.POST("/clear", userCacheClear)
 	user.POST("/create", userCreate)
+	user.GET("", userList)
 }

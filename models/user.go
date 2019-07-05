@@ -22,9 +22,9 @@ type User struct {
 	Id        string    `json:"id" dt:"keyword"`
 	Name      string    `json:"name" dt:"keyword"`
 	Password  string    `json:"password" dt:"keyword"`
-	TelNumber string    `json:"telNumber" dt:"keyword"`
-	Address   string    `json:"address" dt:"text"`
-	Birthday  time.Time `json:"birthday,string" dt:"date"`
+	TelNumber string    `json:"telNumberm,omitempty" dt:"keyword"`
+	Address   string    `json:"address,omitempty" dt:"text"`
+	Birthday  time.Time `json:"birthday,omitempty" dt:"date"`
 }
 
 type user struct {
@@ -62,6 +62,28 @@ func (u *User) Create() (err error) {
 	body := user{Etype: u.esTypeName(), U: u}
 	_, err = esCli.Index().Index(defaultIndex).Id(u.Id).BodyJson(body).Do(context.Background())
 	return
+}
+
+func (u *User) List() ([]*User, error) {
+	fs := elastic.NewFetchSourceContext(true).Exclude(u.esTypeName() + ".password")
+	query := elastic.NewTermQuery("etype", u.esTypeName())
+	sr, err := esCli.Search(defaultIndex).FetchSourceContext(fs).Query(query).Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if sr.Hits.TotalHits.Value < 1 {
+		return nil, fmt.Errorf("No user found")
+	}
+	users := make([]*User, 0)
+	for _, hit := range sr.Hits.Hits {
+		u := new(user)
+		err := json.Unmarshal(hit.Source, u)
+		if err != nil {
+			return nil, fmt.Errorf("json unmarshal error: %v", err)
+		}
+		users = append(users, u.U)
+	}
+	return users, nil
 }
 
 type UserVo struct {
