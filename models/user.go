@@ -19,12 +19,12 @@ func passMd5(p string) string {
 }
 
 type User struct {
-	Id        string    `json:"id" dt:"keyword"`
-	Name      string    `json:"name" dt:"keyword"`
-	Password  string    `json:"password" dt:"keyword"`
-	TelNumber string    `json:"telNumberm,omitempty" dt:"keyword"`
-	Address   string    `json:"address,omitempty" dt:"text"`
-	Birthday  time.Time `json:"birthday,omitempty" dt:"date"`
+	Id        string     `json:"id" dt:"keyword"`
+	Name      string     `json:"name" dt:"keyword"`
+	Password  string     `json:"password" dt:"keyword"`
+	TelNumber string     `json:"telNumberm,omitempty" dt:"keyword"`
+	Address   string     `json:"address,omitempty" dt:"text"`
+	Birthday  *time.Time `json:"birthday,omitempty" dt:"date"`
 }
 
 type user struct {

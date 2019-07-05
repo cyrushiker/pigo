@@ -29,7 +29,6 @@ func userCreate(c *gin.Context) {
 		c.String(http.StatusForbidden, fmt.Sprintf("parse user info error: #%v", err))
 		return
 	}
-	// todo: how to handle the zero value of time.Time
 	err := u.Create()
 	if err != nil {
 		c.String(http.StatusForbidden, err.Error())
