@@ -2,12 +2,31 @@ package routes
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/cyrushiker/pigo/models"
 )
+
+func auth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("tokenId")
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, "User not logged in")
+			return
+		}
+		log.Printf("token: %s", token)
+		// check tokenId from redis
+		uv, err := models.CurrentUserWithToken(token)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
+		}
+		c.Set("user", uv)
+		c.Next()
+	}
+}
 
 func userLogin(c *gin.Context) {
 	var u models.UserVo
@@ -38,8 +57,12 @@ func userCreate(c *gin.Context) {
 }
 
 func userList(c *gin.Context) {
-	u := new(models.User)
-	datas, err := u.List()
+	cu, e := c.Get("user")
+	if e != true {
+		c.String(http.StatusInternalServerError, "user not found in context")
+		return
+	}
+	datas, err := cu.(*models.UserVo).List()
 	if err != nil {
 		c.String(http.StatusForbidden, err.Error())
 		return
@@ -60,5 +83,5 @@ func RegUser(user *gin.RouterGroup) {
 	user.POST("/login", userLogin)
 	user.POST("/clear", userCacheClear)
 	user.POST("/create", userCreate)
-	user.GET("", userList)
+	user.GET("", auth(), userList)
 }

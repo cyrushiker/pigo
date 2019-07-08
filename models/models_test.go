@@ -29,3 +29,36 @@ func TestDoctMapping(t *testing.T) {
 	us, _ := json.Marshal(u)
 	t.Log(string(us))
 }
+
+func TestDoctAdd(t *testing.T) {
+	data := `{
+		"a": 1,
+		"b": {
+			"b1": "11"
+		},
+		"c": [{
+			"c1": 11,
+			"c2": "12",
+			"c3": null
+		},{
+			"c1": 12,
+			"c2": "22"
+		}]
+	}`
+	d := make(map[string]interface{})
+	json.Unmarshal([]byte(data), &d)
+	t.Logf("#%v", d)
+	t.Logf(`d["b"] type is: #%T`, d["b"])
+	t.Logf(`d["c"] type is: #%T`, d["c"])
+	for _, g := range []string{"a", "b", "c"} {
+		if d, ok := d[g]; ok {
+			if _, ok := d.([]interface{}); ok {
+				t.Logf(`d["%s"] is an array`, g)
+			} else if _, ok := d.(map[string]interface{}); ok {
+				t.Logf(`d["%s"] is a map`, g)
+			} else {
+				t.Logf(`d["%s"] is not a map or an array`, g)
+			}
+		}
+	}
+}

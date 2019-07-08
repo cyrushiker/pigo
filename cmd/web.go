@@ -32,6 +32,7 @@ func newGin() *gin.Engine {
 	// todo: middleware config
 	routes.RegHome(r.Group("/"))
 	routes.RegUser(r.Group("/user"))
+	routes.RegDoct(r.Group("/doct"))
 	return r
 }
 

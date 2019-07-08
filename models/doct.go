@@ -26,3 +26,40 @@ type DKey struct {
 
 type KGroup struct {
 }
+
+type KeyDefine struct {
+	Id     string
+	Code   string
+	Groups []struct {
+		Id       string
+		Key      string
+		Name     string
+		Rank     int
+		MetaKeys []struct {
+			Id       string
+			Key      string
+			Name     string
+			Keyword  string
+			Etype    string
+			Optional string
+		}
+	}
+}
+
+type DocVerify struct {
+	kd           *KeyDefine
+	doc          map[string]interface{}
+	raiseOnError bool
+	verifies     []interface{}
+}
+
+func (dv *DocVerify) Verify() {
+	for _, g := range dv.kd.Groups {
+		if d, ok := dv.doc[g.Key]; ok {
+			logger.Println(d)
+			if d, ok := d.([]interface{}); ok {
+				logger.Println(d)
+			}
+		}
+	}
+}

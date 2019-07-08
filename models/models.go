@@ -21,6 +21,8 @@ var (
 	indexTypes []esType
 )
 
+const redisNil = redis.Nil
+
 const defaultIndex = ".pigo"
 
 func init() {

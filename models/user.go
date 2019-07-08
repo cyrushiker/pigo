@@ -137,6 +137,22 @@ func (u *UserVo) Logout() error {
 	return nil
 }
 
+func CurrentUserWithToken(token string) (u *UserVo, err error) {
+	user, err := redisCli.Get(userPrefix + token).Result()
+	if err != nil {
+		if err == redisNil {
+			return u, fmt.Errorf("User info not found with token(%s)", token)
+		}
+		return
+	}
+	u = new(UserVo)
+	err = json.Unmarshal([]byte(user), u)
+	if err != nil {
+		return
+	}
+	return
+}
+
 // ClearUserCache clear all tokens from redis
 func ClearUserCache() (dc int64, err error) {
 	var keys []string
