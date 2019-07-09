@@ -62,3 +62,65 @@ func TestDoctAdd(t *testing.T) {
 		}
 	}
 }
+
+func TestDoctVerify(t *testing.T) {
+	data := `{
+		"stringKey1": "   脑残病  ",
+		"stringKey2": {"value": 11, "unit": "ml"},
+		"arrayStringKey1": ["你", "是", "谁", "?"],
+		"multipleKey1": ["你", "是", "谁", "?"],
+		"multipleKey2": [1, 3, 11],
+		"numberKey1": 111,
+		"dateKey1": "2017-01-09 11:12",
+		"dateKey2": "2017-01-09 11:12:11",
+		"dateKey3": "2017-01-09",
+		"dateKey4": "2017-01-09 ",
+		"dateKey5": "13452231235123",
+		"valueUnit1": {"value": 11, "unit": "mg/ml", "origin": ">=11"},
+		"valueUnit2": "123",
+		"valueUnit3": "133 mg/gg",
+		"valueUnit4": "23 mg/gg gt",
+		"valueUnit5": {"value": "14", "unit": "mg/ml", "origin": "null"},
+		"valueUnit6": null,
+		"valueUnit7": 444
+	}`
+	d := make(map[string]interface{})
+	err := json.Unmarshal([]byte(data), &d)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tkeys := []struct {
+		key, kt, rr, unit string
+	}{
+		{"stringKey1", "String", "", ""},
+		{"stringKey2", "Object", "", ""},
+		{"arrayStringKey1", "ArrayString", "", ""},
+		{"multipleKey1", "Multiple", "", ""},
+		{"multipleKey2", "Multiple", "", ""},
+		{"numberKey1", "Number", "", ""},
+		{"dateKey1", "Date", "", ""},
+		{"dateKey2", "Date", "", ""},
+		{"dateKey3", "Date", "", ""},
+		{"dateKey4", "Date", "", ""},
+		{"dateKey5", "Date", "", ""},
+		{"valueUnit1", "ValueUnit", "", ""},
+		{"valueUnit2", "ValueUnit", "", ""},
+		{"valueUnit3", "ValueUnit", "", ""},
+		{"valueUnit4", "ValueUnit", "", ""},
+		{"valueUnit5", "ValueUnit", "", ""},
+		{"valueUnit6", "ValueUnit", "", ""},
+		{"valueUnit7", "ValueUnit", "", ""},
+	}
+	for _, g := range tkeys {
+		if d, ok := d[g.key]; ok {
+			t.Logf("Before::%#v --- %T", d, d)
+			rv, err := verifySwitch(d, g.key, g.kt, g.rr, g.unit)
+			if err != nil {
+				t.Errorf("After:: rv = %v ~~~ err = %v", rv, err)
+			} else {
+				t.Logf("After:: rv = %v ~~~ err = %v", rv, err)
+			}
+		}
+	}
+}
