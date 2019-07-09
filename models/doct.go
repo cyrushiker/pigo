@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -101,6 +102,21 @@ func verifySwitch(val interface{}, k, kt, rr, unit string) (interface{}, error) 
 			return f, nil
 		}
 		return nil, verifyError{k, val, "number"}
+	case "RegExp":
+		if s, ok := val.(string); !ok {
+			return nil, fmt.Errorf("regexp value must be string")
+		} else {
+			rr = strings.Trim(rr, "/")
+			
+			reg, err := regexp.Compile(rr)
+			if err != nil {
+				return nil, err
+			}
+			if !reg.MatchString(s) {
+				return nil, fmt.Errorf(`"%s" is not match the ruls "/%s/"`, s, rr)
+			}
+			return s, nil
+		}
 	case "Date":
 		if val == float64(-1) || val == "-1" {
 			return nil, fmt.Errorf("date cannot be -1")

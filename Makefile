@@ -5,3 +5,6 @@ login:
 
 clear:
 	curl -XPOST http://localhost:9090/user/clear
+
+test1:
+	go test -timeout 30s github.com/cyrushiker/pigo/models -run TestDoctVerify -v

@@ -82,7 +82,8 @@ func TestDoctVerify(t *testing.T) {
 		"valueUnit4": "23 mg/gg gt",
 		"valueUnit5": {"value": "14", "unit": "mg/ml", "origin": "null"},
 		"valueUnit6": null,
-		"valueUnit7": 444
+		"valueUnit7": 444,
+		"regExpKey1": "123456"
 	}`
 	d := make(map[string]interface{})
 	err := json.Unmarshal([]byte(data), &d)
@@ -111,6 +112,7 @@ func TestDoctVerify(t *testing.T) {
 		{"valueUnit5", "ValueUnit", "", ""},
 		{"valueUnit6", "ValueUnit", "", ""},
 		{"valueUnit7", "ValueUnit", "", ""},
+		{"regExpKey1", "RegExp", `/^\d+$/`, ""},
 	}
 	for _, g := range tkeys {
 		if d, ok := d[g.key]; ok {

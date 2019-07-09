@@ -4,6 +4,7 @@ import (
 	"strconv"
 )
 
+// ItoFloat64 interface{} value from json unmarshal to float64
 func ItoFloat64(i interface{}) (float64, bool) {
 	switch v := i.(type) {
 	case float64:
