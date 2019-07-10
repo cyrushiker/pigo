@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	// "fmt"
 	// "os"
@@ -8,6 +9,9 @@ import (
 	"time"
 
 	"github.com/dchest/captcha"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestDoctMapping(t *testing.T) {
@@ -81,7 +85,7 @@ func TestDoctVerify(t *testing.T) {
 		"valueUnit3": "133 mg/gg",
 		"valueUnit4": "23 mg/gg gt",
 		"valueUnit5": {"value": "14", "unit": "mg/ml", "origin": "null"},
-		"valueUnit6": null,
+		"valueUnit6": "null",
 		"valueUnit7": 444,
 		"regExpKey1": "123456"
 	}`
@@ -114,6 +118,7 @@ func TestDoctVerify(t *testing.T) {
 		{"valueUnit7", "ValueUnit", "", ""},
 		{"regExpKey1", "RegExp", `/^\d+$/`, ""},
 	}
+	indoc := make(map[string]interface{})
 	for _, g := range tkeys {
 		if d, ok := d[g.key]; ok {
 			t.Logf("Before::%#v --- %T", d, d)
@@ -121,8 +126,71 @@ func TestDoctVerify(t *testing.T) {
 			if err != nil {
 				t.Errorf("After:: rv = %v ~~~ err = %v", rv, err)
 			} else {
+				indoc[g.key] = rv
 				t.Logf("After:: rv = %v ~~~ err = %v", rv, err)
 			}
 		}
+	}
+
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	collection := client.Database("test").Collection("verify")
+	insertResult, err := collection.InsertOne(context.TODO(), indoc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("Inserted a single document: ", insertResult.InsertedID)
+
+	result := make(map[string]interface{})
+	err = collection.FindOne(context.TODO(), bson.M{}).Decode(&result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Found a single document: %#v\n", result)
+	for k, v := range result {
+		t.Logf("Search: Key=%s *** Val=%v *** VType=%T ##", k, v, v)
+	}
+
+	indoc2 := make(map[string]interface{})
+	collection2 := client.Database("test").Collection("verify2")
+	for _, k := range []string{
+		"stringKey1",
+		"arrayStringKey1",
+		"multipleKey1",
+		"numberKey1",
+		"dateKey1",
+		"valueUnit1",
+		"regExpKey1",
+	} {
+		indoc2[k] = result[k]
+	}
+	collection2.InsertOne(context.TODO(), indoc2)
+}
+
+func TestGorm(t *testing.T) {
+	NewGorm()
+	defer db.Close()
+	err := db.DropTableIfExists(&MetaKey{}).CreateTable(&MetaKey{}).Error
+	if err != nil {
+		t.Log(err)
+	}
+
+	mk := MetaKey{Key: "key1", Name: "firstKey", Keyword: "关键字 第一个 测试字段"}
+	if db.NewRecord(mk) {
+		err := db.Create(&mk).Error
+		if err != nil {
+			t.Log(err)
+		}
+	}
+
+	mkr := new(MetaKey)
+	if err := db.Model(&MetaKey{}).First(mkr).Error; err == nil {
+		// t.Log(mkr)
+		mkrj, _ := json.MarshalIndent(mkr, "", "  ")
+		t.Log(string(mkrj))
 	}
 }

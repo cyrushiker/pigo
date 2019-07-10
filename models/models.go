@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
+	"github.com/jinzhu/gorm"
 	"github.com/olivere/elastic/v7"
 
 	"github.com/cyrushiker/pigo/pkg/setting"
@@ -17,6 +19,7 @@ import (
 var (
 	redisCli *redis.Client
 	esCli    *elastic.Client
+	db       *gorm.DB
 
 	indexTypes []esType
 )
@@ -99,6 +102,14 @@ func NewEsCli() {
 	)
 	if err != nil {
 		panic(fmt.Sprintf("New elastic client error: #%v", err))
+	}
+}
+
+func NewGorm() {
+	var err error
+	db, err = gorm.Open("mysql", "root:root@/pigo?charset=utf8mb4&parseTime=True&loc=Local")
+	if err != nil {
+		panic("failed to connect database")
 	}
 }
 

@@ -11,11 +11,11 @@ import (
 )
 
 type Doct struct {
-	Id         string    `json:"id" dt:"keyword"`
-	Name       string    `json:"name,omitempty" dt:"keyword"`
-	Key        string    `json:"key" dt:"keyword"`
-	Desc       string    `json:"desc,omitempty" dt:"text"`
-	CreateDate time.Time `json:"createDate,omitempty" dt:"date"`
+	Id         string     `json:"id" dt:"keyword"`
+	Name       string     `json:"name,omitempty" dt:"keyword"`
+	Key        string     `json:"key" dt:"keyword"`
+	Desc       string     `json:"desc,omitempty" dt:"text"`
+	CreateDate *time.Time `json:"createDate,omitempty" dt:"date"`
 	Position   int
 }
 
@@ -27,7 +27,20 @@ func (d *Doct) Add() error {
 	return nil
 }
 
-type DKey struct {
+type BaseModel struct {
+	ID        uint       `json:"id" gorm:"primary_key"`
+	CreatedAt time.Time  `json:"createTime"`
+	UpdatedAt time.Time  `json:"updateTime"`
+	DeletedAt *time.Time `json:"-" sql:"index"`
+}
+
+type MetaKey struct {
+	BaseModel
+	Key      string `json:"key" gorm:"type:varchar(100);unique_index;not null"`
+	Name     string `json:"name" gorm:"type:varchar(200)"`
+	Keyword  string `json:"keyword" gorm:"type:varchar(200)"`
+	Etype    string `json:"etype" gorm:"type:varchar(50)"`
+	Optional string `json:"optional" gorm:"type:varchar(500)"`
 }
 
 type KGroup struct {
@@ -107,7 +120,7 @@ func verifySwitch(val interface{}, k, kt, rr, unit string) (interface{}, error) 
 			return nil, fmt.Errorf("regexp value must be string")
 		} else {
 			rr = strings.Trim(rr, "/")
-			
+
 			reg, err := regexp.Compile(rr)
 			if err != nil {
 				return nil, err
@@ -163,7 +176,9 @@ func verifySwitch(val interface{}, k, kt, rr, unit string) (interface{}, error) 
 		switch val := val.(type) {
 		case float64:
 			vu["value"] = val
-			vu["unit"] = unit
+			if unit != "" {
+				vu["unit"] = unit
+			}
 			return vu, nil
 		case map[string]interface{}:
 			for _, k := range valueUnitKM {
@@ -192,14 +207,13 @@ func verifySwitch(val interface{}, k, kt, rr, unit string) (interface{}, error) 
 			}
 			div := strings.Index(val, " ")
 			if div > -1 {
-				vu["value"] = val[:div]
 				vu["unit"] = val[div+1:]
+				val = val[:div]
+			}
+			if f, ok := tool.ItoFloat64(val); ok {
+				vu["value"] = f
 			} else {
-				if f, ok := tool.ItoFloat64(val); ok {
-					vu["value"] = f
-				} else {
-					vu["value_str"] = val
-				}
+				vu["value_str"] = val
 			}
 			return vu, nil
 		default:
