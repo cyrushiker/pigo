@@ -18,6 +18,7 @@ func GlobalInit() {
 	// init db clients
 	models.NewRedisCli()
 	models.NewEsCli()
+	models.NewGormDB()
 
 	// set captcha store to redis
 	captcha.SetCustomStore(models.NewCaptchaStore(15 * time.Minute))

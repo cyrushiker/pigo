@@ -10,6 +10,13 @@ import (
 	"github.com/cyrushiker/pigo/pkg/tool"
 )
 
+const (
+	// the rules of naming
+	codeRP = `^[a-z]{2,}$`
+	keyRP  = `^[a-z]+([a-zA-Z]+)$`
+	grpRP  = `^[a-z]+(_?[a-z]+)+$`
+)
+
 type Doct struct {
 	Id         string     `json:"id" dt:"keyword"`
 	Name       string     `json:"name,omitempty" dt:"keyword"`
@@ -23,10 +30,6 @@ func (d *Doct) esTypeName() string {
 	return "docut"
 }
 
-func (d *Doct) Add() error {
-	return nil
-}
-
 type BaseModel struct {
 	ID        uint       `json:"id" gorm:"primary_key"`
 	CreatedAt time.Time  `json:"createTime"`
@@ -34,13 +37,29 @@ type BaseModel struct {
 	DeletedAt *time.Time `json:"-" sql:"index"`
 }
 
+type Combination struct {
+}
+
 type MetaKey struct {
 	BaseModel
-	Key      string `json:"key" gorm:"type:varchar(100);unique_index;not null"`
-	Name     string `json:"name" gorm:"type:varchar(200)"`
-	Keyword  string `json:"keyword" gorm:"type:varchar(200)"`
-	Etype    string `json:"etype" gorm:"type:varchar(50)"`
-	Optional string `json:"optional" gorm:"type:varchar(500)"`
+	Key     string `json:"key" gorm:"type:varchar(100);unique_index;not null"`
+	Name    string `json:"name" gorm:"type:varchar(200)"`
+	NameEn  string `json:"name_en"`
+	EnAbbr  string `json:"en_abbr"`
+	Level   int    `json:"level" gorm:"default:1"`
+	Keyword string `json:"keyword" gorm:"type:varchar(200)"`
+	Options string `json:"options" gorm:"type:varchar(500)"`
+	Remark  string `json:"remark" gorm:"type:varchar(300)"`
+
+	Etype     string `json:"etype" gorm:"type:varchar(50)"`
+	Eanalyzer string `json:"eanalyzer"`
+}
+
+func (mk *MetaKey) Save() error {
+	// todo: 去重
+	// todo: 事务
+	// todo: 验证mk各个字段是否符合规则
+	return db.Create(mk).Error
 }
 
 type KGroup struct {

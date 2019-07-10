@@ -172,7 +172,7 @@ func TestDoctVerify(t *testing.T) {
 }
 
 func TestGorm(t *testing.T) {
-	NewGorm()
+	NewGormDB()
 	defer db.Close()
 	err := db.DropTableIfExists(&MetaKey{}).CreateTable(&MetaKey{}).Error
 	if err != nil {
@@ -188,7 +188,7 @@ func TestGorm(t *testing.T) {
 	}
 
 	mkr := new(MetaKey)
-	if err := db.Model(&MetaKey{}).First(mkr).Error; err == nil {
+	if err := db.First(mkr).Error; err == nil {
 		// t.Log(mkr)
 		mkrj, _ := json.MarshalIndent(mkr, "", "  ")
 		t.Log(string(mkrj))
