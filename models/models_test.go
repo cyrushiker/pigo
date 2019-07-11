@@ -174,20 +174,20 @@ func TestDoctVerify(t *testing.T) {
 func TestGorm(t *testing.T) {
 	NewGormDB()
 	defer db.Close()
-	err := db.DropTableIfExists(&MetaKey{}).CreateTable(&MetaKey{}).Error
+	err := db.DropTableIfExists(&Atom{}).CreateTable(&Atom{}).Error
 	if err != nil {
 		t.Log(err)
 	}
 
-	mk := MetaKey{Key: "key1", Name: "firstKey", Keyword: "关键字 第一个 测试字段"}
-	if db.NewRecord(mk) {
-		err := db.Create(&mk).Error
+	a := Atom{Key: "key1", Name: "firstKey", Keyword: "关键字 第一个 测试字段"}
+	if db.NewRecord(a) {
+		err := db.Create(&a).Error
 		if err != nil {
 			t.Log(err)
 		}
 	}
 
-	mkr := new(MetaKey)
+	mkr := new(Atom)
 	if err := db.First(mkr).Error; err == nil {
 		// t.Log(mkr)
 		mkrj, _ := json.MarshalIndent(mkr, "", "  ")

@@ -11,8 +11,11 @@ type config struct {
 	Version   string `yaml:"version"`
 	Databases struct {
 		Mysql struct {
-			Host string `yaml:"host"`
-			Port int    `yaml:"port"`
+			Host     string `yaml:"host"`
+			Port     int    `yaml:"port"`
+			User     string `yaml:"user"`
+			Password string `yaml:"password"`
+			Db       string `yaml:"db"`
 		}
 		Redis struct {
 			Addr     string `yaml:"addr"`
@@ -40,6 +43,12 @@ var (
 	RedisDB   = 0
 
 	EsHosts = []string{"http://127.0.0.1:9200"}
+
+	MysqlHost     = "localhost"
+	MysqlPort     = 3306
+	MysqlUser     = "root"
+	MysqlPassword = ""
+	MysqlDB       = ""
 )
 
 func NewContext() {
@@ -60,4 +69,11 @@ func NewContext() {
 
 	// elasticsearch
 	EsHosts = cf.Databases.Elastic.Hosts
+
+	// mysql
+	MysqlHost = cf.Databases.Mysql.Host
+	MysqlPort = cf.Databases.Mysql.Port
+	MysqlUser = cf.Databases.Mysql.User
+	MysqlPassword = cf.Databases.Mysql.Password
+	MysqlDB = cf.Databases.Mysql.Db
 }

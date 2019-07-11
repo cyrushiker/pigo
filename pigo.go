@@ -23,6 +23,7 @@ func main() {
 	app.Commands = []cli.Command{
 		cmd.Web,
 		cmd.Index,
+		cmd.Db,
 	}
 	app.Run(os.Args)
 }

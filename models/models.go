@@ -22,7 +22,12 @@ var (
 	db       *gorm.DB
 
 	indexTypes []esType
+	tables     []interface{}
 )
+
+var MyTableNameHandler = func(db *gorm.DB, defaultTableName string) string {
+	return "pg_" + defaultTableName
+}
 
 const redisNil = redis.Nil
 
@@ -30,6 +35,7 @@ const defaultIndex = ".pigo"
 
 func init() {
 	indexTypes = append(indexTypes, new(Doct), new(User))
+	tables = append(tables, new(Atom), new(Molecule), new(Compound))
 }
 
 func CreateIndex(flag bool) error {
@@ -107,7 +113,8 @@ func NewEsCli() {
 
 func NewGormDB() {
 	var err error
-	db, err = gorm.Open("mysql", "root:root@/pigo?charset=utf8mb4&parseTime=True&loc=Local")
+	gorm.DefaultTableNameHandler = MyTableNameHandler
+	db, err = gorm.Open("mysql", "root:root@tcp(localhost:3306)/pigo?charset=utf8mb4&parseTime=True&loc=Local")
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -115,6 +122,13 @@ func NewGormDB() {
 	db.DB().SetMaxIdleConns(10)
 	db.DB().SetMaxOpenConns(100)
 	db.DB().SetConnMaxLifetime(time.Hour)
+}
+
+func CreateTables(drop bool) error {
+	if drop {
+		return db.DropTableIfExists(tables...).CreateTable(tables...).Error
+	}
+	return db.CreateTable(tables...).Error
 }
 
 // esType declare the type name

@@ -19,12 +19,12 @@ func addDoct(c *gin.Context) {
 }
 
 func addMetaKey(c *gin.Context) {
-	mk := new(models.MetaKey)
-	if err := c.ShouldBindJSON(&mk); err != nil {
+	a := new(models.Atom)
+	if err := c.ShouldBindJSON(&a); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := mk.Save(); err != nil {
+	if err := a.Save(); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 	}
 }
