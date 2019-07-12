@@ -194,3 +194,13 @@ func TestGorm(t *testing.T) {
 		t.Log(string(mkrj))
 	}
 }
+
+func TestHP(t *testing.T) {
+	girls, _ := Extract("https://www.meizitu.com")
+
+	t.Logf("%#v", girls)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := DownloadPics(ctx, "/tmp/meizitu/", girls, 10)
+	t.Logf("%v", err)
+}

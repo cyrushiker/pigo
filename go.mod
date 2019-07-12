@@ -18,5 +18,6 @@ require (
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.0.2
+	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
 	gopkg.in/yaml.v2 v2.2.2
 )

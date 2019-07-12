@@ -26,6 +26,7 @@ func addMetaKey(c *gin.Context) {
 	}
 	if err := a.Save(); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
+		return
 	}
 }
 

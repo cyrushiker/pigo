@@ -58,8 +58,5 @@ type CompoundElem struct {
 }
 
 func (a *Atom) Save() error {
-	// todo: 去重
-	// todo: 事务
-	// todo: 验证mk各个字段是否符合规则
 	return db.Create(a).Error
 }
