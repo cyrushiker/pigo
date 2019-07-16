@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"encoding/json"
-	// "fmt"
 	// "os"
 	"testing"
 	"time"
@@ -174,25 +173,27 @@ func TestDoctVerify(t *testing.T) {
 func TestGorm(t *testing.T) {
 	NewGormDB()
 	defer db.Close()
-	err := db.DropTableIfExists(&Atom{}).CreateTable(&Atom{}).Error
-	if err != nil {
-		t.Log(err)
-	}
+	// err := db.DropTableIfExists(&Atom{}).CreateTable(&Atom{}).Error
+	// if err != nil {
+	// 	t.Log(err)
+	// }
 
-	a := Atom{Key: "key1", Name: "firstKey", Keyword: "关键字 第一个 测试字段"}
+	a := Atom{Key: "key4", Name: "测试Key3", Keyword: "关键字 第一个 测试字段", Level: 1}
 	if db.NewRecord(a) {
-		err := db.Create(&a).Error
-		if err != nil {
-			t.Log(err)
+		dbn := db.Create(&a)
+		if dbn.Error != nil {
+			t.Fatal(dbn.Error)
 		}
+		f, _ := json.MarshalIndent(a, "", "  ")
+		t.Log(string(f))
 	}
 
-	mkr := new(Atom)
-	if err := db.First(mkr).Error; err == nil {
-		// t.Log(mkr)
-		mkrj, _ := json.MarshalIndent(mkr, "", "  ")
-		t.Log(string(mkrj))
-	}
+	// mkr := new(Atom)
+	// if err := db.First(mkr).Error; err == nil {
+	// 	// t.Log(mkr)
+	// 	mkrj, _ := json.MarshalIndent(mkr, "", "  ")
+	// 	t.Log(string(mkrj))
+	// }
 }
 
 func TestHP(t *testing.T) {
@@ -203,4 +204,13 @@ func TestHP(t *testing.T) {
 	defer cancel()
 	err := DownloadPics(ctx, "/tmp/meizitu/", girls, 10)
 	t.Logf("%v", err)
+}
+
+func TestCtx(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	r, err := longOpDo(ctx)
+	if err != nil {
+		t.Fatal(err, r)
+	}
 }

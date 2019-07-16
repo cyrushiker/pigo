@@ -118,7 +118,7 @@ func NewGormDB() {
 	if err != nil {
 		panic("failed to connect database")
 	}
-	db.SetLogger(logger)
+	db.LogMode(true)
 	db.DB().SetMaxIdleConns(10)
 	db.DB().SetMaxOpenConns(100)
 	db.DB().SetConnMaxLifetime(time.Hour)

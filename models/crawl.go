@@ -76,7 +76,7 @@ func forEachNode(n *html.Node, pre, post func(n *html.Node)) {
 	}
 }
 
-func downloadPic(base, src string) error {
+func downloadPic(ctx context.Context, base, src string) error {
 	logger.Printf("Get picture from #%s#", src)
 	ps := strings.Split(src, "/")
 	name := strings.Join(ps[3:], "_")
@@ -88,8 +88,6 @@ func downloadPic(base, src string) error {
 		return err
 	}
 	req, err := http.NewRequest("GET", src, nil)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	resp, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return err
@@ -119,7 +117,7 @@ func DownloadPics(ctx context.Context, base string, srcs []string, w int) error 
 		go func() {
 			defer wg.Done()
 			for s := range sc {
-				err := downloadPic(base, s)
+				err := downloadPic(ctx, base, s)
 				if err != nil {
 					errc <- err
 				}
@@ -138,4 +136,33 @@ func DownloadPics(ctx context.Context, base string, srcs []string, w int) error 
 	}
 
 	return nil
+}
+
+func longOpDo(ctx context.Context) (string, error) {
+	s := make(chan string, 1)
+	c := make(chan error, 1)
+	go func() {
+		s1, c1 := longOp(ctx)
+		s <- s1
+		c <- c1
+	}()
+	select {
+	case <-ctx.Done():
+		return "false 1", ctx.Err()
+	case r := <-s:
+		err := <-c
+		return r, err
+	}
+}
+
+func longOp(ctx context.Context) (string, error) {
+	select {
+	case <-ctx.Done():
+		return "false 2", ctx.Err()
+	default:
+	}
+
+	logger.Println("sleep 4 second")
+	time.Sleep(4 * time.Second)
+	return "true", nil
 }
