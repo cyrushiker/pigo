@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
 	"golang.org/x/net/proxy"
 )
@@ -74,6 +75,165 @@ func forEachNode(n *html.Node, pre, post func(n *html.Node)) {
 	if post != nil {
 		post(n)
 	}
+}
+
+type MeizituCrawl struct {
+	sync.Mutex
+	worker  int
+	base    string
+	url     string
+	pages   int
+	limit   int
+	links   chan string
+	nexts   chan string
+	pics    chan string
+	picsSet map[string]struct{}
+}
+
+func NewMeizituCrawl(url string, limit int) *MeizituCrawl {
+	return &MeizituCrawl{
+		base:    "/tmp/meizitu/",
+		worker:  10,
+		url:     url,
+		limit:   limit,
+		pages:   0,
+		links:   make(chan string, 20),
+		nexts:   make(chan string, 20),
+		pics:    make(chan string, 20),
+		picsSet: make(map[string]struct{}),
+	}
+}
+
+func (mc *MeizituCrawl) addNext(url string) {
+	mc.Lock()
+	defer mc.Unlock()
+	if mc.pages < mc.limit {
+		mc.pages++
+		mc.nexts <- url
+		if mc.pages == mc.limit {
+			logger.Println(strings.Repeat("*", 32), "close channal >> nexts", strings.Repeat("*", 32))
+			close(mc.nexts)
+		}
+	}
+}
+
+func (mc *MeizituCrawl) addLinks(urls []string) {
+	for _, url := range urls {
+		mc.links <- url
+	}
+}
+
+func (mc *MeizituCrawl) addPics(pics []string) {
+	for _, pic := range pics {
+		var ok bool
+		mc.Lock()
+		if _, ok = mc.picsSet[pic]; !ok {
+			mc.picsSet[pic] = struct{}{}
+		}
+		mc.Unlock()
+		if !ok {
+			mc.pics <- pic
+		}
+	}
+}
+
+func (mc *MeizituCrawl) Close() {
+	close(mc.nexts)
+	close(mc.links)
+	close(mc.pics)
+}
+
+func (mc *MeizituCrawl) Crawl() {
+	mc.addNext(mc.url)
+	go func() {
+		for url := range mc.nexts {
+			next, links, _, err := Extract2(url)
+			if err != nil {
+				logger.Printf("Error: %v", err)
+				continue
+			}
+			mc.addLinks(links)
+			mc.addNext(next)
+		}
+		logger.Println(strings.Repeat("*", 32), "close channal >> links", strings.Repeat("*", 32))
+		close(mc.links)
+	}()
+
+	go func() {
+		for url := range mc.links {
+			_, _, pics, err := Extract2(url)
+			if err != nil {
+				logger.Printf("Error: %v", err)
+				continue
+			}
+			mc.addPics(pics)
+		}
+		logger.Println(strings.Repeat("*", 32), "close channal >> pics", strings.Repeat("*", 32))
+		close(mc.pics)
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(mc.worker)
+	for i := 0; i < mc.worker; i++ {
+		go func() {
+			defer wg.Done()
+			for pic := range mc.pics {
+				err := downloadPic(context.TODO(), mc.base, pic)
+				if err != nil {
+					logger.Println(err)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	logger.Println("crawl done.")
+}
+
+func Extract2(url string) (next string, links []string, pics []string, err error) {
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		err = fmt.Errorf("getting %s: %s", url, resp.Status)
+		return
+	}
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		err = fmt.Errorf("xmlpath: parsing %s with error: %v", url, err)
+		return
+	}
+
+	// list
+	doc.Find("#maincontent .inWrap ul li .pic").Each(func(i int, s *goquery.Selection) {
+		if link, ok := s.Find("a").Attr("href"); ok {
+			logger.Println(link)
+			links = append(links, link)
+		}
+	})
+	// next
+	doc.Find(".navigation #wp_page_numbers ul li:nth-last-child(2)").Each(func(i int, s *goquery.Selection) {
+		if n, ok := s.Find("a").Attr("href"); ok {
+			n, err := resp.Request.URL.Parse(n)
+			if err != nil {
+				return
+			}
+			next = n.String()
+			logger.Println("next page is --> ", next)
+		}
+	})
+	// pics
+	doc.Find(".postContent #picture p img").Each(func(i int, s *goquery.Selection) {
+		if m, ok := s.Attr("src"); ok {
+			// logger.Println(m)
+			pics = append(pics, m)
+		}
+	})
+	return
 }
 
 func downloadPic(ctx context.Context, base, src string) error {

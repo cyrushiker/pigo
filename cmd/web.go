@@ -16,14 +16,9 @@ var Web = cli.Command{
 	Description: `You will need to set host and ip first before run, otherwise it will runing with default setting.`,
 	Action:      runWeb,
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "port, p",
-			Value: "9090",
-			Usage: "Temporary port number to prevent conflict"},
-		cli.StringFlag{
-			Name:  "config, c",
-			Value: "conf/app.yml",
-			Usage: "Custom configuration file path"},
+		stringFlag("port, p", "9090", "Temporary port number to prevent conflict"),
+		stringFlag("mode, m", "debug", "set the mode of gin"),
+		stringFlag("config, c", "conf/app.yml", "Custom configuration file path"),
 	},
 }
 
@@ -42,6 +37,9 @@ func runWeb(c *cli.Context) {
 	}
 	if c.IsSet("port") {
 		setting.HTTPPort = c.String("port")
+	}
+	if c.IsSet("mode") {
+		gin.SetMode(c.String("mode"))
 	}
 	listenAddr := fmt.Sprintf("%s:%s", setting.HTTPAddr, setting.HTTPPort)
 	routes.GlobalInit()

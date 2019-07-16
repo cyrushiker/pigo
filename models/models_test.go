@@ -197,13 +197,38 @@ func TestGorm(t *testing.T) {
 }
 
 func TestHP(t *testing.T) {
-	girls, _ := Extract("https://www.meizitu.com")
+	detailUrl := "https://www.meizitu.com/a/5521.html"
+	// pageUrl := "https://www.meizitu.com/a/list_1_1.html"
+	next, links, girls, err := Extract2(detailUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
 
+	t.Logf("%#v", next)
+	t.Logf("%#v", links)
 	t.Logf("%#v", girls)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	err := DownloadPics(ctx, "/tmp/meizitu/", girls, 10)
-	t.Logf("%v", err)
+	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// defer cancel()
+	// err := DownloadPics(ctx, "/tmp/meizitu/", girls, 10)
+	// t.Logf("%v", err)
+}
+
+func TestHP2(t *testing.T) {
+	pageUrl := "https://www.meizitu.com/a/list_1_1.html"
+	mc := NewMeizituCrawl(pageUrl, 2)
+	mc.Crawl()
+	// next, links, girls, err := Extract2(detailUrl)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	// t.Logf("%#v", next)
+	// t.Logf("%#v", links)
+	// t.Logf("%#v", girls)
+	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// defer cancel()
+	// err := DownloadPics(ctx, "/tmp/meizitu/", girls, 10)
+	// t.Logf("%v", err)
 }
 
 func TestCtx(t *testing.T) {
