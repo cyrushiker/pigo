@@ -137,12 +137,6 @@ func (mc *MeizituCrawl) addPics(pics []string) {
 	}
 }
 
-func (mc *MeizituCrawl) Close() {
-	close(mc.nexts)
-	close(mc.links)
-	close(mc.pics)
-}
-
 func (mc *MeizituCrawl) Crawl() {
 	mc.addNext(mc.url)
 	go func() {
