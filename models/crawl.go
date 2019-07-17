@@ -1,9 +1,11 @@
 package models
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -84,6 +86,7 @@ type MeizituCrawl struct {
 	url     string
 	pages   int
 	limit   int
+	timeout time.Duration
 	links   chan string
 	nexts   chan string
 	pics    chan string
@@ -97,6 +100,7 @@ func NewMeizituCrawl(url string, limit int) *MeizituCrawl {
 		url:     url,
 		limit:   limit,
 		pages:   0,
+		timeout: 10 * time.Second,
 		links:   make(chan string, 20),
 		nexts:   make(chan string, 20),
 		pics:    make(chan string, 20),
@@ -185,7 +189,13 @@ func (mc *MeizituCrawl) Crawl() {
 }
 
 func Extract2(url string) (next string, links []string, pics []string, err error) {
-	resp, err := httpClient.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
+	resp, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return
 	}
@@ -319,4 +329,123 @@ func longOp(ctx context.Context) (string, error) {
 	logger.Println("sleep 4 second")
 	time.Sleep(4 * time.Second)
 	return "true", nil
+}
+
+// ********** novel crawl **********
+
+func httpGetBody(ctx context.Context, c *http.Client, url string) (interface{}, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		err = fmt.Errorf("getting %s: %s", url, resp.Status)
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
+}
+
+type result struct {
+	value interface{}
+	err   error
+}
+
+type task struct {
+	hc    *http.Client
+	url   string
+	res   result
+	ready chan struct{} // closed when res is ready
+}
+
+func (t *task) call() {
+	// Evaluate the function.
+	logger.Print("calling ", t.url)
+	t.res.value, t.res.err = httpGetBody(context.Background(), t.hc, t.url)
+	// Broadcast the ready condition.
+	close(t.ready)
+}
+
+func NovelScrapy(p bool) error {
+	// chapter list
+	chapterUrl := "http://www.shuquge.com/txt/30668/index.html"
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	fd, err := os.OpenFile("/tmp/xzltq.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+
+	hc := http.DefaultClient
+	if p {
+		hc = httpClient
+	}
+	body, err := httpGetBody(ctx, hc, chapterUrl)
+	if err != nil {
+		return err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body.([]byte)))
+	if err != nil {
+		return err
+	}
+
+	// list
+	var tasks []*task
+	doc.Find(".listmain dl dd").Each(func(i int, s *goquery.Selection) {
+		if link, ok := s.Find("a").Attr("href"); ok {
+			link = "http://www.shuquge.com/txt/30668/" + link
+			// logger.Println(link)
+			// links = append(links, link)
+			t := &task{
+				hc:    hc,
+				url:   link,
+				ready: make(chan struct{}),
+			}
+			tasks = append(tasks, t)
+		}
+	})
+	tasks = tasks[100:]
+	// sort.Strings(links)
+	logger.Println("lens of tasks ", len(tasks))
+	// logger.Println("first of links ", links[0])
+	// logger.Println("last of links ", links[len(links)-1])
+	// tc := make(chan *task, 10)
+	token := make(chan struct{}, 10)
+	go func() {
+		for _, t := range tasks {
+			token <- struct{}{}
+			// todo control concurrent
+			go t.call()
+		}
+	}()
+
+	for _, t := range tasks {
+		<-t.ready
+		body, err := t.res.value, t.res.err
+		if err != nil {
+			continue
+		}
+		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body.([]byte)))
+		if err != nil {
+			continue
+		}
+		doc.Find(".content").Each(func(i int, s *goquery.Selection) {
+			title := s.Find("h1").Text()
+			content := s.Find("#content").Text()
+			logger.Println(title, " ", len(content))
+			fd.WriteString(title)
+			fd.WriteString("\n\n")
+			fd.WriteString(content)
+		})
+		<-token
+	}
+
+	return nil
 }

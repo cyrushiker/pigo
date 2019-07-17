@@ -24,6 +24,7 @@ func main() {
 		cmd.Web,
 		cmd.Index,
 		cmd.Db,
+		cmd.Crawl,
 	}
 	app.Run(os.Args)
 }
