@@ -178,22 +178,17 @@ func TestGorm(t *testing.T) {
 	// 	t.Log(err)
 	// }
 
-	a := Atom{Key: "key4", Name: "测试Key3", Keyword: "关键字 第一个 测试字段", Level: 1}
-	if db.NewRecord(a) {
-		dbn := db.Create(&a)
-		if dbn.Error != nil {
-			t.Fatal(dbn.Error)
-		}
-		f, _ := json.MarshalIndent(a, "", "  ")
-		t.Log(string(f))
+	a := &Atom{Key: "key1", Name: "测试Key3", Keyword: "关键字 第一个 测试字段", Level: 1}
+	err := a.Save()
+	err = a.Save()
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	// mkr := new(Atom)
-	// if err := db.First(mkr).Error; err == nil {
-	// 	// t.Log(mkr)
-	// 	mkrj, _ := json.MarshalIndent(mkr, "", "  ")
-	// 	t.Log(string(mkrj))
-	// }
+	f, err := json.MarshalIndent(a, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(f))
 }
 
 func TestHP(t *testing.T) {
@@ -238,4 +233,9 @@ func TestCtx(t *testing.T) {
 	if err != nil {
 		t.Fatal(err, r)
 	}
+}
+
+func TestParse(t *testing.T) {
+	parse("(姓名 = 吴秉礼 or (男 肌酐 > 0)) and (白细胞<=20 红细胞 >= 10)")
+	convert("ab+cde+**")
 }

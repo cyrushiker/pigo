@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -371,12 +372,13 @@ func (t *task) call() {
 	close(t.ready)
 }
 
-func NovelScrapy(p bool) error {
+func NovelScrapy(p bool, bookid string) error {
 	// chapter list
-	chapterUrl := "http://www.shuquge.com/txt/30668/index.html"
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	start := time.Now()
+	chapterUrl := fmt.Sprintf("http://www.shuquge.com/txt/%s/index.html", bookid)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
-	fd, err := os.OpenFile("/tmp/xzltq.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	fd, err := os.OpenFile(fmt.Sprintf("/tmp/%s.txt", bookid), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
@@ -400,7 +402,7 @@ func NovelScrapy(p bool) error {
 	var tasks []*task
 	doc.Find(".listmain dl dd").Each(func(i int, s *goquery.Selection) {
 		if link, ok := s.Find("a").Attr("href"); ok {
-			link = "http://www.shuquge.com/txt/30668/" + link
+			link = fmt.Sprintf("http://www.shuquge.com/txt/%s/%s", bookid, link)
 			// logger.Println(link)
 			// links = append(links, link)
 			t := &task{
@@ -411,7 +413,7 @@ func NovelScrapy(p bool) error {
 			tasks = append(tasks, t)
 		}
 	})
-	tasks = tasks[100:]
+	tasks = tasks[12:]
 	// sort.Strings(links)
 	logger.Println("lens of tasks ", len(tasks))
 	// logger.Println("first of links ", links[0])
@@ -426,6 +428,7 @@ func NovelScrapy(p bool) error {
 		}
 	}()
 
+	titleRe := regexp.MustCompile(`^([0-9]*)(、| )`)
 	for _, t := range tasks {
 		<-t.ready
 		body, err := t.res.value, t.res.err
@@ -438,6 +441,7 @@ func NovelScrapy(p bool) error {
 		}
 		doc.Find(".content").Each(func(i int, s *goquery.Selection) {
 			title := s.Find("h1").Text()
+			title = titleRe.ReplaceAllString(title, "第${1}章 ")
 			content := s.Find("#content").Text()
 			logger.Println(title, " ", len(content))
 			fd.WriteString(title)
@@ -447,5 +451,6 @@ func NovelScrapy(p bool) error {
 		<-token
 	}
 
+	logger.Printf("crawl spend : %v\n", time.Since(start))
 	return nil
 }

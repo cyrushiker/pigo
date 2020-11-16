@@ -1,14 +1,16 @@
 package models
 
 import (
+	"errors"
+	"regexp"
 	"time"
 )
 
 const (
 	// the rules of naming
-	codeRP = `^[a-z]{2,}$`
-	keyRP  = `^[a-z]+([a-zA-Z]+)$`
-	grpRP  = `^[a-z]+(_?[a-z]+)+$`
+	codeRE = `^[a-z]{2,}$`
+	keyRE  = `^[a-z]+([a-zA-Z]{1,64})$`
+	grpRE  = `^[a-z]+(_?[a-z]+)+$`
 )
 
 type BaseModel struct {
@@ -58,5 +60,11 @@ type CompoundElem struct {
 }
 
 func (a *Atom) Save() error {
+	if validKey := regexp.MustCompile(keyRE).MatchString(a.Key); !validKey {
+		return errors.New("key of atom is not conform to the rules")
+	}
+	if !db.NewRecord(*a) {
+		return errors.New("id is not empty")
+	}
 	return db.Create(a).Error
 }
