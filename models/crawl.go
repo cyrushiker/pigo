@@ -22,15 +22,21 @@ var httpClient *http.Client
 
 func init() {
 	// create a socks5 dialer
-	dialer, err := proxy.SOCKS5("tcp", "127.0.0.1:1080", nil, proxy.Direct)
+	dialer, err := proxy.SOCKS5("tcp", "127.0.0.1:1081", nil, proxy.Direct)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "can't connect to the proxy:", err)
 		os.Exit(1)
 	}
 	// set our socks5 as the dialer
-	httpTransport := &http.Transport{Dial: dialer.Dial}
+	httpTransport := &http.Transport{
+		Dial:            dialer.Dial,
+		IdleConnTimeout: 10 * time.Second,
+	}
 	// setup a http client
-	httpClient = &http.Client{Transport: httpTransport}
+	httpClient = &http.Client{
+		Transport: httpTransport,
+		Timeout:   10 * time.Second,
+	}
 }
 
 func Extract(url string) ([]string, error) {
@@ -339,7 +345,7 @@ func httpGetBody(ctx context.Context, c *http.Client, url string) (interface{}, 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Do(req.WithContext(ctx))
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -365,14 +371,16 @@ type task struct {
 }
 
 func (t *task) call() {
+	// Broadcast the ready condition.
+	defer close(t.ready)
+	time.Sleep(1 * time.Second) // 解决服务端503错误
 	// Evaluate the function.
 	logger.Print("calling ", t.url)
 	t.res.value, t.res.err = httpGetBody(context.Background(), t.hc, t.url)
-	// Broadcast the ready condition.
-	close(t.ready)
+	logger.Print("calling ", t.url, " finished!")
 }
 
-func NovelScrapy(p bool, bookid string) error {
+func NovelScrapy(p bool, bookid string, skip int) error {
 	// chapter list
 	start := time.Now()
 	chapterUrl := fmt.Sprintf("http://www.shuquge.com/txt/%s/index.html", bookid)
@@ -413,13 +421,13 @@ func NovelScrapy(p bool, bookid string) error {
 			tasks = append(tasks, t)
 		}
 	})
-	tasks = tasks[12:]
+	tasks = tasks[12+skip:]
 	// sort.Strings(links)
 	logger.Println("lens of tasks ", len(tasks))
 	// logger.Println("first of links ", links[0])
 	// logger.Println("last of links ", links[len(links)-1])
 	// tc := make(chan *task, 10)
-	token := make(chan struct{}, 10)
+	token := make(chan struct{}, 1)
 	go func() {
 		for _, t := range tasks {
 			token <- struct{}{}
@@ -433,10 +441,14 @@ func NovelScrapy(p bool, bookid string) error {
 		<-t.ready
 		body, err := t.res.value, t.res.err
 		if err != nil {
+			logger.Println(t.url, " calling err: ", err)
+			<-token
 			continue
 		}
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body.([]byte)))
 		if err != nil {
+			logger.Println(t.url, " parsing err: ", err)
+			<-token
 			continue
 		}
 		doc.Find(".content").Each(func(i int, s *goquery.Selection) {

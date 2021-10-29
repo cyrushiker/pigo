@@ -25,6 +25,7 @@ var (
 		Flags: []cli.Flag{
 			boolFlag("proxy, p", "whether use proxy or not."),
 			stringFlag("book, b", "", "set the book number to scratch"),
+			intFlag("skip, n", 0, "set number of pages to skip"),
 		},
 	}
 )
@@ -32,7 +33,8 @@ var (
 func runCrawlNovels(c *cli.Context) error {
 	proxy := c.Bool("proxy")
 	book := c.String("book")
-	if err := models.NovelScrapy(proxy, book); err != nil {
+	skip := c.Int("skip")
+	if err := models.NovelScrapy(proxy, book, skip); err != nil {
 		fmt.Fprintf(c.App.Writer, "crawl novel: %v", err)
 	}
 
